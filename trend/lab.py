@@ -4,19 +4,20 @@ from datetime import datetime
 
 import pandas as pd
 
-from trend.config import MARKET, REPORT_DIR, STOCKS
-from trend.data import load, update_all
+from trend.config import MARKET, REPORT_DIR
+from trend.data import load, load_dataset, update_all
+from trend.universe import build_membership, download_raw_prices, pool_names
 from trend.features import build_dataset
 from trend.judge import (JUDGE_FEATURES, evaluate, explain, new_judge, reason_stats, summarize, walk_forward)
 from trend.optimize import load_strategy
-from trend.portfolio import DEFAULT_SIZING, benchmark, curve_stats, position_weight, simulate
+from trend.portfolio import DEFAULT_SIZING, benchmark, curve_stats, position_weight, prices, simulate
 from trend.trader import DEFAULT_EXIT, SETUPS, TRAIL_NAMES, SetupBook, checklist, plan_trade, simulate_exit
 
 JOURNAL = REPORT_DIR / 'journal.csv'
 
 
 def price_panel():
-    return pd.DataFrame({c: load(f'{c}.TW')['Close'] for c in STOCKS}).sort_index()
+    return prices()
 
 
 def similar_stats(history, setup, prob):
@@ -134,12 +135,12 @@ def write_report(ctx):
           '']
     pf = ctx['portfolio']
     L += [f'模擬資金（最多 {sz["max_positions"]} 檔、單筆風險 {sz["risk"]:.0%}）與同期間比較：', '',
-          '| | 期間 | 年化報酬 | 最大回檔 | 50 檔平均持有 |', '|---|---|---|---|---|']
-    for label, key in (('逐年驗收', 'dev'), ('**期末考**', 'holdout')):
+          '| | 期間 | 報酬 | 最大回檔 | 當時前 50 大平均持有 |', '|---|---|---|---|---|']
+    for label, key, metric, unit in (('逐年驗收', 'dev', 'cagr', '年化'), ('**期末考**', 'holdout', 'total_return', '累計')):
         s = pf.get(key) or {}
         b = s.get('benchmark') or {}
-        L.append(f'| {label} | {s.get("start", "—")} ~ {s.get("end", "—")} | {pct(s.get("cagr"))} | '
-                 f'{pct(s.get("max_drawdown"))} | {pct(b.get("cagr"))}（回檔 {pct(b.get("max_drawdown"))}） |')
+        L.append(f'| {label} | {s.get("start", "—")} ~ {s.get("end", "—")} | {unit} {pct(s.get(metric))} | '
+                 f'{pct(s.get("max_drawdown"))} | {unit} {pct(b.get(metric))}（回檔 {pct(b.get("max_drawdown"))}） |')
     if pf.get('configs_tested'):
         L.append(f'\n規則由 {pf["configs_tested"]} 種組合中，只用逐年驗收期間挑選；期末考不參與挑選。')
     L.append('')
@@ -148,13 +149,16 @@ def write_report(ctx):
           '| 理由 | 符合時勝率 | 不符合時勝率 | 符合時平均 R |', '|---|---|---|---|']
     L += [f'| {r["group"]}・{r["name"]} | {pct(r["win_yes"], ".0%")} | {pct(r["win_no"], ".0%")} | {pct(r["r_yes"], "+.2f")} |'
           for r in ctx['reasons']]
-    L += ['', '> 回測含存活者偏差（使用目前 0050 成分股）。模擬帳戶以隔日開盤價進場，未計滑價。']
+    L += ['', '> 股票池為每季依市值重排的前 50 大上市公司（以全部市值估算，非官方 0050 名單；已下市公司無資料）。'
+              '模擬帳戶以隔日開盤價進場，未計滑價。']
     (REPORT_DIR / 'latest.md').write_text('\n'.join(L) + '\n', encoding='utf-8')
 
 
 def main(skip_download=False):
     if not skip_download:
         update_all()
+        download_raw_prices(list(pool_names()), force=True)
+        build_membership(load_dataset)
 
     strategy = load_strategy() or {}
     exit_rule = strategy.get('exit', DEFAULT_EXIT)

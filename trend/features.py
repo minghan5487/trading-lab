@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from trend.config import HORIZON, MARKET, STOCKS
+from trend.config import HORIZON, MARKET
 from trend.data import load, load_valuation
 from trend.traders import TRADER_FEATURES, add_cross_sectional, stock_trader_features
+from trend.universe import load_membership, members_at, pool_names
 
 TECHNICAL = [
     'ret_5', 'ret_20', 'ret_60', 'ma_gap_20', 'ma_gap_60', 'rsi_14', 'macd_hist',
@@ -83,9 +84,13 @@ def build_dataset():
     market = market_features()
     frames = {}
 
-    for code in STOCKS:
+    members = load_membership()
+    for code in pool_names():
         df = load(f'{code}.TW')
         if df is None or len(df) < 300:
+            continue
+        member = members_at(members, code, df.index)
+        if not member.any():
             continue
         feats = price_features(df).join(market, how='left')
         feats = feats.join(valuation_features(code, df.index))
@@ -94,14 +99,16 @@ def build_dataset():
         feats['future_return'] = df['Close'].shift(-HORIZON) / df['Close'] - 1
         feats['close'] = df['Close']
         feats['code'] = code
+        feats['member'] = member
         frames[code] = feats
 
-    above_200 = pd.concat({c: f['faber_trend_200'] > 0 for c, f in frames.items()}, axis=1)
-    valid = pd.concat({c: f['faber_trend_200'].notna() for c, f in frames.items()}, axis=1)
+    above_200 = pd.concat({c: (f['faber_trend_200'] > 0) & f['member'] for c, f in frames.items()}, axis=1)
+    valid = pd.concat({c: f['faber_trend_200'].notna() & f['member'] for c, f in frames.items()}, axis=1)
     breadth = above_200.sum(axis=1).astype(float) / valid.sum(axis=1).replace(0, np.nan)
 
     data = pd.concat(frames.values())
     data.index.name = 'date'
+    data = data[data['member']].drop(columns='member')
     data['breadth_200'] = breadth.reindex(data.index).values
     data = add_cross_sectional(data)
     data = data.replace([np.inf, -np.inf], np.nan).dropna(subset=REQUIRED)

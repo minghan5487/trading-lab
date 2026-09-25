@@ -11,10 +11,11 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 330
     env:
       TZ: Asia/Taipei
       FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+      FINMIND_MAX_WAIT: '240'
     steps:
       - uses: actions/checkout@v4
 

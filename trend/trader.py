@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from trend.config import STOCKS
 from trend.data import load
 from trend.fundamentals import CHIPS, FUNDAMENTAL, chip_features, fundamental_features
+from trend.universe import pool_names
 
 COST_PCT = 0.001425 * 2 + 0.003
 MIN_RISK, MAX_RISK = 0.02, 0.12
@@ -80,20 +80,23 @@ def simulate_exit(arrays, start, entry, plan, exit_rule=DEFAULT_EXIT):
 class SetupBook:
     def __init__(self, full):
         self.stocks, self.setups = {}, []
-        for code in STOCKS:
+        names = pool_names()
+        for code in full['code'].unique():
             df = load(f'{code}.TW')
             if df is None:
                 continue
             ind = indicators(df)
-            ctx = full[full['code'] == code].reindex(df.index)
+            own = full[full['code'] == code]
+            ctx = own.reindex(df.index)
             fund = fundamental_features(code, df.index)
             chips = chip_features(code, df.index, df['Volume'])
             self.stocks[code] = (df, ind)
 
-            for date, kind in find_setups(df, ind, ctx).items():
+            setups = find_setups(df, ind, ctx)
+            for date, kind in setups[setups.index.isin(own.index)].items():
                 pos = df.index.get_loc(date)
                 self.setups.append({
-                    'code': code, 'name': STOCKS[code], 'signal_date': date, 'setup': kind, 'pos': pos,
+                    'code': code, 'name': names.get(code, code), 'signal_date': date, 'setup': kind, 'pos': pos,
                     'close': df['Close'].iat[pos],
                     **ctx.loc[date, [c for c in TECHNICAL + REGIME if c in ctx]].to_dict(),
                     **fund.loc[date].to_dict(), **chips.loc[date].to_dict(),

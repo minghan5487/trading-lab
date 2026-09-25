@@ -36,13 +36,15 @@ def quarterly(code):
     op_cash = col('CashFlowsFromOperatingActivities')
     capex = col('PropertyAndPlantAndEquipment').abs()
     gross_margin = col('GrossProfit') / col('Revenue')
+    net_income = (col('IncomeAfterTaxes').fillna(col('IncomeFromContinuingOperations'))
+                  .fillna(col('TotalConsolidatedProfitForThePeriod')))
 
     return pd.DataFrame({
         'eps_ttm_yoy': eps_ttm / eps_ttm.shift(4).where(eps_ttm.shift(4) > 0) - 1,
         'gross_margin': gross_margin,
         'gross_margin_chg': gross_margin - gross_margin.shift(4),
         'op_margin': col('OperatingIncome') / col('Revenue'),
-        'roe_ttm': ttm(col('IncomeAfterTaxes')) / col('EquityAttributableToOwnersOfParent'),
+        'roe_ttm': ttm(net_income) / col('EquityAttributableToOwnersOfParent'),
         'debt_ratio': col('Liabilities') / col('TotalAssets'),
         'fcf_margin': (op_cash - capex) / col('Revenue'),
         'revenue_ttm': revenue_ttm,

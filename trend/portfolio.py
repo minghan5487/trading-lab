@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from trend.config import STOCKS
 from trend.data import load
+from trend.universe import load_membership, pool_names
 
 DEFAULT_SIZING = {'risk': 0.01, 'max_positions': 10, 'max_weight': 0.2}
 
@@ -12,7 +12,8 @@ _PRICES = None
 def prices():
     global _PRICES
     if _PRICES is None:
-        _PRICES = pd.DataFrame({c: load(f'{c}.TW')['Close'] for c in STOCKS}).sort_index()
+        frames = {c: load(f'{c}.TW') for c in pool_names()}
+        _PRICES = pd.DataFrame({c: f['Close'] for c, f in frames.items() if f is not None}).sort_index()
     return _PRICES
 
 
@@ -79,4 +80,9 @@ def benchmark(prices_df, start, end):
     p = prices_df[start:end].dropna(how='all')
     if len(p) < 2:
         return {}
-    return curve_stats((1 + p.pct_change().mean(axis=1).fillna(0)).cumprod())
+    returns = p.pct_change()
+    members = load_membership()
+    if members is not None:
+        held = members.reindex(index=p.index, columns=p.columns).ffill().fillna(False).astype(bool).shift(1)
+        returns = returns.where(held.fillna(False).astype(bool))
+    return curve_stats((1 + returns.mean(axis=1).fillna(0)).cumprod())

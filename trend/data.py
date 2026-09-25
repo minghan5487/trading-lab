@@ -7,12 +7,16 @@ import pandas as pd
 import requests
 import yfinance as yf
 
-from trend.config import DATA_ROOT, MARKET, START_DATE, STOCKS
+from trend.config import DATA_ROOT, MARKET, START_DATE
+from trend.universe import current_members, pool_names
+
+INACTIVE_MAX_AGE = 30
 
 FINMIND_URL = 'https://api.finmindtrade.com/api/v4/data'
 PRICE_DIR = DATA_ROOT / 'prices'
 
-INCOME_ITEMS = ['Revenue', 'GrossProfit', 'OperatingIncome', 'IncomeAfterTaxes', 'EPS']
+INCOME_ITEMS = ['Revenue', 'GrossProfit', 'OperatingIncome', 'IncomeAfterTaxes', 'EPS',
+                'IncomeFromContinuingOperations', 'TotalConsolidatedProfitForThePeriod']
 BALANCE_ITEMS = ['EquityAttributableToOwnersOfParent', 'TotalAssets', 'Liabilities']
 CASHFLOW_ITEMS = ['CashFlowsFromOperatingActivities', 'PropertyAndPlantAndEquipment']
 INSTITUTIONS = {'Foreign_Investor': 'foreign', 'Investment_Trust': 'trust', 'Dealer_self': 'dealer'}
@@ -80,7 +84,7 @@ def fetch_margin(code):
 
 def fetch_shareholding(code):
     df = finmind('TaiwanStockShareholding', code)
-    return df if df.empty else df.set_index('date')[['ForeignInvestmentSharesRatio']]
+    return df if df.empty else df.set_index('date')[['ForeignInvestmentSharesRatio', 'NumberOfSharesIssued']]
 
 
 DATASETS = {
@@ -134,7 +138,7 @@ def price_path(symbol):
 
 def update_prices(force=False):
     PRICE_DIR.mkdir(parents=True, exist_ok=True)
-    symbols = [MARKET] + [f'{code}.TW' for code in STOCKS]
+    symbols = [MARKET] + [f'{code}.TW' for code in pool_names()]
     for i, symbol in enumerate(symbols, 1):
         path = price_path(symbol)
         if not force and age_days(path) == 0:
@@ -148,21 +152,25 @@ def update_prices(force=False):
         print(f'[股價 {i}/{len(symbols)}] {symbol} 最新 {df.index[-1].date()}', flush=True)
 
 
-def update_finmind(force=False, max_wait_minutes=65):
+def update_finmind(force=False, max_wait_minutes=None):
+    max_wait_minutes = max_wait_minutes or int(os.environ.get('FINMIND_MAX_WAIT', 90))
     waited = 0
+    codes = list(pool_names())
+    active = current_members()
     for name, (fetch, max_age) in DATASETS.items():
         folder = DATA_ROOT / name
         folder.mkdir(parents=True, exist_ok=True)
-        for i, code in enumerate(STOCKS, 1):
+        for i, code in enumerate(codes, 1):
             path = folder / f'{code}.csv'
             age = age_days(path)
-            if not force and age is not None and age < max_age:
+            limit = max_age if code in active else max(max_age, INACTIVE_MAX_AGE)
+            if not force and age is not None and age < limit:
                 continue
             while True:
                 try:
                     fetch(code).to_csv(path)
                     mark_updated(str(path.relative_to(DATA_ROOT)))
-                    print(f'[{name} {i}/{len(STOCKS)}] {code}', flush=True)
+                    print(f'[{name} {i}/{len(codes)}] {code}', flush=True)
                     break
                 except RateLimited as e:
                     if waited >= max_wait_minutes:
@@ -172,7 +180,7 @@ def update_finmind(force=False, max_wait_minutes=65):
                     time.sleep(300)
                     waited += 5
                 except Exception as e:
-                    print(f'[{name} {i}/{len(STOCKS)}] {code} 下載失敗：{e}')
+                    print(f'[{name} {i}/{len(codes)}] {code} 下載失敗：{e}')
                     break
             time.sleep(0.3)
 

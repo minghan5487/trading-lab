@@ -4,11 +4,10 @@ import time
 
 import pandas as pd
 
-from trend.config import MODEL_DIR, REPORT_DIR, STOCKS
-from trend.data import load
+from trend.config import MODEL_DIR
 from trend.features import build_dataset
 from trend.judge import walk_forward
-from trend.portfolio import benchmark, curve_stats, simulate
+from trend.portfolio import benchmark, curve_stats, prices, simulate
 from trend.trader import SetupBook
 
 EXIT_GRID = {
@@ -28,7 +27,7 @@ def grid(spec):
 
 
 def price_panel():
-    return pd.DataFrame({c: load(f'{c}.TW')['Close'] for c in STOCKS}).sort_index()
+    return prices()
 
 
 def score(stats):
