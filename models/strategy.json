@@ -1,0 +1,464 @@
+{
+  "exit": {
+    "target_r": null,
+    "trail": "sma50",
+    "breakeven_r": 1.0,
+    "max_hold": 120
+  },
+  "sizing": {
+    "risk": 0.02,
+    "max_positions": 5,
+    "max_weight": 0.25
+  },
+  "use_judge": false,
+  "selected_at": "2026-09-25 15:50",
+  "configs_tested": 648,
+  "dev": {
+    "total_return": 16.42696442936287,
+    "cagr": 0.30925837117674604,
+    "max_drawdown": -0.2647912557869251,
+    "calmar": 1.167932718388568,
+    "start": "2016-01-04",
+    "end": "2026-03-24",
+    "exposure": 0.8363212951730019,
+    "trades": 251,
+    "benchmark": {
+      "total_return": 7.8169218079721166,
+      "cagr": 0.23742236453957344,
+      "max_drawdown": -0.283469261357546,
+      "calmar": 0.8375594708313272
+    }
+  },
+  "holdout": {
+    "total_return": 0.5468318133446173,
+    "cagr": 1.377140440605598,
+    "max_drawdown": -0.15855929302615823,
+    "calmar": 8.685334137926592,
+    "start": "2026-03-24",
+    "end": "2026-09-24",
+    "exposure": 0.9675618527636185,
+    "trades": 18,
+    "still_open": 5,
+    "benchmark": {
+      "total_return": 0.6742156550671932,
+      "cagr": 1.781491837522252,
+      "max_drawdown": -0.07843219135417911,
+      "calmar": 22.71378380182576
+    }
+  },
+  "leaderboard": [
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "sma50",
+        "breakeven_r": 1.0,
+        "max_hold": 120
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 5,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 16.42696442936287,
+        "cagr": 0.30925837117674604,
+        "max_drawdown": -0.2647912557869251,
+        "calmar": 1.167932718388568
+      },
+      "exposure": 0.8363212951730019,
+      "trades": 251,
+      "holdout": {
+        "total_return": 0.5468318133446173,
+        "cagr": 1.377140440605598,
+        "max_drawdown": -0.15855929302615823,
+        "calmar": 8.685334137926592,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9675618527636185,
+        "trades": 18,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "sma50",
+        "breakeven_r": 1.0,
+        "max_hold": 120
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 10,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 16.42696442936287,
+        "cagr": 0.30925837117674604,
+        "max_drawdown": -0.2647912557869251,
+        "calmar": 1.167932718388568
+      },
+      "exposure": 0.8363212951730019,
+      "trades": 251,
+      "holdout": {
+        "total_return": 0.5468318133446173,
+        "cagr": 1.377140440605598,
+        "max_drawdown": -0.15855929302615823,
+        "calmar": 8.685334137926592,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9675618527636185,
+        "trades": 18,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "low20",
+        "breakeven_r": 1.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 5,
+        "max_weight": 0.25
+      },
+      "use_judge": true,
+      "dev": {
+        "total_return": 5.605720659416715,
+        "cagr": 0.19995121092878865,
+        "max_drawdown": -0.17724288570765678,
+        "calmar": 1.128119812146293
+      },
+      "exposure": 0.8015264074773734,
+      "trades": 87,
+      "holdout": {
+        "total_return": 0.3533075894644333,
+        "cagr": 0.8231786569170982,
+        "max_drawdown": -0.24297818368744117,
+        "calmar": 3.3878706492267106,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9030239302989903,
+        "trades": 5,
+        "still_open": 4,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "low20",
+        "breakeven_r": 1.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 10,
+        "max_weight": 0.25
+      },
+      "use_judge": true,
+      "dev": {
+        "total_return": 5.605720659416715,
+        "cagr": 0.19995121092878865,
+        "max_drawdown": -0.17724288570765678,
+        "calmar": 1.128119812146293
+      },
+      "exposure": 0.8015264074773734,
+      "trades": 87,
+      "holdout": {
+        "total_return": 0.3533075894644333,
+        "cagr": 0.8231786569170982,
+        "max_drawdown": -0.24297818368744117,
+        "calmar": 3.3878706492267106,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9030239302989903,
+        "trades": 5,
+        "still_open": 4,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "sma50",
+        "breakeven_r": 1.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 5,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 16.7252856392538,
+        "cagr": 0.3075484310247518,
+        "max_drawdown": -0.2748866663876257,
+        "calmar": 1.1188190211855122
+      },
+      "exposure": 0.8278466407542561,
+      "trades": 233,
+      "holdout": {
+        "total_return": 0.5468318133446173,
+        "cagr": 1.377140440605598,
+        "max_drawdown": -0.15855929302615823,
+        "calmar": 8.685334137926592,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9675618527636185,
+        "trades": 18,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "sma50",
+        "breakeven_r": 1.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 10,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 16.7252856392538,
+        "cagr": 0.3075484310247518,
+        "max_drawdown": -0.2748866663876257,
+        "calmar": 1.1188190211855122
+      },
+      "exposure": 0.8278466407542561,
+      "trades": 233,
+      "holdout": {
+        "total_return": 0.5468318133446173,
+        "cagr": 1.377140440605598,
+        "max_drawdown": -0.15855929302615823,
+        "calmar": 8.685334137926592,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9675618527636185,
+        "trades": 18,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "low20",
+        "breakeven_r": 1.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 5,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 20.177235905548827,
+        "cagr": 0.3294298068741883,
+        "max_drawdown": -0.31076260912918907,
+        "calmar": 1.0600689954216436
+      },
+      "exposure": 0.8514601202692784,
+      "trades": 110,
+      "holdout": {
+        "total_return": 0.37721924998613354,
+        "cagr": 0.8876813150573863,
+        "max_drawdown": -0.06856395493608891,
+        "calmar": 12.94676358568913,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9941604843870852,
+        "trades": 5,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "low20",
+        "breakeven_r": 1.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 10,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 20.177235905548827,
+        "cagr": 0.3294298068741883,
+        "max_drawdown": -0.31076260912918907,
+        "calmar": 1.0600689954216436
+      },
+      "exposure": 0.8514601202692784,
+      "trades": 110,
+      "holdout": {
+        "total_return": 0.37721924998613354,
+        "cagr": 0.8876813150573863,
+        "max_drawdown": -0.06856395493608891,
+        "calmar": 12.94676358568913,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9941604843870852,
+        "trades": 5,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "sma50",
+        "breakeven_r": 2.0,
+        "max_hold": 120
+      },
+      "sizing": {
+        "risk": 0.01,
+        "max_positions": 10,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 7.398716975007815,
+        "cagr": 0.22098894988674278,
+        "max_drawdown": -0.22696671560588777,
+        "calmar": 0.9736623684966875
+      },
+      "exposure": 0.8793351784501419,
+      "trades": 267,
+      "holdout": {
+        "total_return": 0.7406526100790176,
+        "cagr": 2.0048763936561502,
+        "max_drawdown": -0.0886768449313654,
+        "calmar": 22.608792579482227,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9570533549791712,
+        "trades": 17,
+        "still_open": 7,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    },
+    {
+      "exit": {
+        "target_r": null,
+        "trail": "sma50",
+        "breakeven_r": 2.0,
+        "max_hold": 250
+      },
+      "sizing": {
+        "risk": 0.02,
+        "max_positions": 5,
+        "max_weight": 0.25
+      },
+      "use_judge": false,
+      "dev": {
+        "total_return": 16.97405316132686,
+        "cagr": 0.3092492502808468,
+        "max_drawdown": -0.3241059153612246,
+        "calmar": 0.9541610801400536
+      },
+      "exposure": 0.8401251535293767,
+      "trades": 188,
+      "holdout": {
+        "total_return": 0.3748552862222525,
+        "cagr": 0.8812548597202297,
+        "max_drawdown": -0.16298695743306502,
+        "calmar": 5.406904169507801,
+        "start": "2026-03-24",
+        "end": "2026-09-24",
+        "exposure": 0.9763794692798152,
+        "trades": 14,
+        "still_open": 5,
+        "benchmark": {
+          "total_return": 0.6742156550671932,
+          "cagr": 1.781491837522252,
+          "max_drawdown": -0.07843219135417911,
+          "calmar": 22.71378380182576
+        }
+      }
+    }
+  ],
+  "baseline": {
+    "exit": {
+      "target_r": 3.0,
+      "trail": "sma20",
+      "breakeven_r": 1.0,
+      "max_hold": 60
+    },
+    "sizing": {
+      "risk": 0.01,
+      "max_positions": 10,
+      "max_weight": 0.25
+    },
+    "use_judge": true,
+    "dev": {
+      "total_return": 0.8896786014325613,
+      "cagr": 0.06320007977583697,
+      "max_drawdown": -0.26812534744318195,
+      "calmar": 0.2357109478029846
+    },
+    "exposure": 0.7816703799570708,
+    "trades": 442,
+    "score": 0.2357109478029846
+  }
+}

@@ -1,14 +1,15 @@
 import numpy as np
 import pandas as pd
 
-from trend.config import MARKET, STOCKS
+from trend.config import STOCKS
 from trend.data import load
 from trend.fundamentals import CHIPS, FUNDAMENTAL, chip_features, fundamental_features
 
 COST_PCT = 0.001425 * 2 + 0.003
-TARGET_R = 3.0
-MAX_HOLD = 60
 MIN_RISK, MAX_RISK = 0.02, 0.12
+
+DEFAULT_EXIT = {'target_r': 3.0, 'trail': 'sma20', 'breakeven_r': 1.0, 'max_hold': 60}
+TRAIL_NAMES = {'sma20': '20 日線', 'sma50': '50 日線', 'low20': '20 日低點', 'none': '不設移動停利'}
 
 SETUPS = {
     'breakout': '趨勢突破：趨勢模板符合 7 項以上，放量突破 20 日高點（Minervini、Livermore、O\'Neil）',
@@ -28,7 +29,7 @@ def indicators(df):
     loss = (-delta.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
     return pd.DataFrame({
         'sma20': close.rolling(20).mean(), 'sma50': close.rolling(50).mean(), 'sma200': close.rolling(200).mean(),
-        'atr': tr.rolling(14).mean(), 'rsi_14': 100 - 100 / (1 + gain / loss),
+        'low20': low.rolling(20).min(), 'atr': tr.rolling(14).mean(), 'rsi_14': 100 - 100 / (1 + gain / loss),
         'high20': close.shift(1).rolling(20).max(), 'low10': low.shift(1).rolling(10).min(),
         'vol50': volume.rolling(50).mean(), 'ret_5': close.pct_change(5),
     }, index=df.index)
@@ -43,7 +44,7 @@ def find_setups(df, ind, ctx):
     return kind[kind != '']
 
 
-def plan_trade(kind, entry, ind_row):
+def plan_trade(kind, entry, ind_row, exit_rule=DEFAULT_EXIT):
     if kind == 'breakout':
         stop = max(entry - 2 * ind_row.atr, ind_row.low10)
     else:
@@ -52,76 +53,100 @@ def plan_trade(kind, entry, ind_row):
     risk_pct = risk / entry
     if not (MIN_RISK <= risk_pct <= MAX_RISK):
         return None
-    return {'stop': stop, 'target': entry + TARGET_R * risk, 'risk': risk, 'risk_pct': risk_pct}
+    target = entry + exit_rule['target_r'] * risk if exit_rule['target_r'] else np.inf
+    return {'stop': stop, 'target': target, 'risk': risk, 'risk_pct': risk_pct}
 
 
-def simulate_exit(df, ind, start, entry, plan):
+def simulate_exit(arrays, start, entry, plan, exit_rule=DEFAULT_EXIT):
+    o, h, l, c, trail_line = arrays
     stop, target, risk = plan['stop'], plan['target'], plan['risk']
-    breakeven = False
-    end = min(start + MAX_HOLD, len(df) - 1)
+    trailing = False
+    n = len(c)
+    end = min(start + exit_rule['max_hold'], n - 1)
     for i in range(start, end + 1):
-        o, h, l, c = df['Open'].iat[i], df['High'].iat[i], df['Low'].iat[i], df['Close'].iat[i]
-        if l <= stop:
-            price = min(o, stop)
-            return i, price, '移動停損（保本）' if breakeven else '停損：跌破停損價'
-        if h >= target:
-            return i, max(o, target), f'停利：達到 {TARGET_R:.0f}R 目標價'
-        if not breakeven and h >= entry + risk:
-            stop, breakeven = max(stop, entry), True
-        if breakeven and c < ind['sma20'].iat[i]:
-            return i, c, '移動停利：獲利後收盤跌破 20 日線'
-    if end == len(df) - 1 and end - start < MAX_HOLD:
+        if l[i] <= stop:
+            return i, min(o[i], stop), '移動停損（保本）' if trailing and stop >= entry else '停損：跌破停損價'
+        if h[i] >= target:
+            return i, max(o[i], target), f'停利：達到 {exit_rule["target_r"]:.0f}R 目標價'
+        if not trailing and h[i] >= entry + exit_rule['breakeven_r'] * risk:
+            stop, trailing = max(stop, entry), True
+        if trailing and trail_line is not None and c[i] < trail_line[i]:
+            return i, c[i], f'移動停利：獲利後收盤跌破{TRAIL_NAMES[exit_rule["trail"]]}'
+    if end == n - 1 and end - start < exit_rule['max_hold']:
         return None
-    return end, df['Close'].iat[end], f'時間出場：持有滿 {MAX_HOLD} 個交易日'
+    return end, c[end], f'時間出場：持有滿 {exit_rule["max_hold"]} 個交易日'
 
 
-def build_trades(full):
-    market = load(MARKET)
-    trades, open_setups = [], []
-    for code in STOCKS:
-        df = load(f'{code}.TW')
-        if df is None:
-            continue
-        ind = indicators(df)
-        ctx = full[full['code'] == code].reindex(df.index)
-        fund = fundamental_features(code, df.index)
-        chips = chip_features(code, df.index, df['Volume'])
+class SetupBook:
+    def __init__(self, full):
+        self.stocks, self.setups = {}, []
+        for code in STOCKS:
+            df = load(f'{code}.TW')
+            if df is None:
+                continue
+            ind = indicators(df)
+            ctx = full[full['code'] == code].reindex(df.index)
+            fund = fundamental_features(code, df.index)
+            chips = chip_features(code, df.index, df['Volume'])
+            self.stocks[code] = (df, ind)
 
-        for date, kind in find_setups(df, ind, ctx).items():
-            pos = df.index.get_loc(date)
-            row = {'code': code, 'name': STOCKS[code], 'signal_date': date, 'setup': kind,
-                   'close': df['Close'].iat[pos],
-                   **ctx.loc[date, [c for c in TECHNICAL + REGIME if c in ctx]].to_dict(),
-                   **fund.loc[date].to_dict(), **chips.loc[date].to_dict()}
+            for date, kind in find_setups(df, ind, ctx).items():
+                pos = df.index.get_loc(date)
+                self.setups.append({
+                    'code': code, 'name': STOCKS[code], 'signal_date': date, 'setup': kind, 'pos': pos,
+                    'close': df['Close'].iat[pos],
+                    **ctx.loc[date, [c for c in TECHNICAL + REGIME if c in ctx]].to_dict(),
+                    **fund.loc[date].to_dict(), **chips.loc[date].to_dict(),
+                })
 
+    def arrays(self, code, trail):
+        df, ind = self.stocks[code]
+        line = None if trail == 'none' else ind[trail].values
+        return df['Open'].values, df['High'].values, df['Low'].values, df['Close'].values, line
+
+    def trades(self, exit_rule=DEFAULT_EXIT):
+        trades, candidates = [], []
+        cache = {}
+        for s in self.setups:
+            df, ind = self.stocks[s['code']]
+            pos = s['pos']
             if pos + 1 >= len(df):
-                plan = plan_trade(kind, row['close'], ind.iloc[pos])
+                plan = plan_trade(s['setup'], s['close'], ind.iloc[pos], exit_rule)
                 if plan:
-                    open_setups.append({**row, **plan, 'entry': row['close'], 'risk_pct': plan['risk_pct']})
+                    candidates.append({**s, **plan, 'entry': s['close']})
                 continue
 
             entry = df['Open'].iat[pos + 1]
-            plan = plan_trade(kind, entry, ind.iloc[pos])
+            plan = plan_trade(s['setup'], entry, ind.iloc[pos], exit_rule)
             if plan is None:
                 continue
-            exit_info = simulate_exit(df, ind, pos + 1, entry, plan)
-            if exit_info is None:
-                continue
-            exit_pos, exit_price, exit_reason = exit_info
+            if s['code'] not in cache:
+                cache[s['code']] = self.arrays(s['code'], exit_rule['trail'])
+            result = simulate_exit(cache[s['code']], pos + 1, entry, plan, exit_rule)
+            still_open = result is None
+            if still_open:
+                exit_pos, exit_price, exit_reason = len(df) - 1, df['Close'].iat[-1], '持有中（以最新收盤價計）'
+            else:
+                exit_pos, exit_price, exit_reason = result
             pnl = exit_price / entry - 1 - COST_PCT
             trades.append({
-                **row, **plan, 'entry_date': df.index[pos + 1], 'entry': entry,
+                **s, **plan, 'entry_date': df.index[pos + 1], 'entry': entry,
                 'exit_date': df.index[exit_pos], 'exit': exit_price, 'exit_reason': exit_reason,
                 'days': exit_pos - pos - 1, 'return': pnl, 'r_multiple': pnl * entry / plan['risk'],
+                'open': still_open,
             })
 
-    trades = pd.DataFrame(trades)
-    trades['is_breakout'] = (trades['setup'] == 'breakout').astype(int)
-    trades['win'] = (trades['r_multiple'] > 0).astype(int)
-    candidates = pd.DataFrame(open_setups)
-    if not candidates.empty:
-        candidates['is_breakout'] = (candidates['setup'] == 'breakout').astype(int)
-    return trades.sort_values('entry_date').reset_index(drop=True), candidates
+        trades = pd.DataFrame(trades)
+        trades['is_breakout'] = (trades['setup'] == 'breakout').astype(int)
+        trades['win'] = (trades['r_multiple'] > 0).astype(int)
+        candidates = pd.DataFrame(candidates)
+        if not candidates.empty:
+            candidates['is_breakout'] = (candidates['setup'] == 'breakout').astype(int)
+        return trades.sort_values('entry_date').reset_index(drop=True), candidates
+
+
+def build_trades(full, exit_rule=DEFAULT_EXIT):
+    return SetupBook(full).trades(exit_rule)
 
 
 def checklist(row):
