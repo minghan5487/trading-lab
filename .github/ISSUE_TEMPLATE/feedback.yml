@@ -1,0 +1,30 @@
+name: 回報問題
+description: 使用時發現的問題或想調整的地方
+title: "[回報] "
+labels: ["回報"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 類型
+      options:
+        - 進場點不合理
+        - 出場／停損不合理
+        - 理由說不通
+        - 基本面／籌碼資料有誤
+        - 報告看不懂
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: stock
+    attributes:
+      label: 股票與日期
+      placeholder: 例如 2330 2026-09-24
+  - type: textarea
+    id: detail
+    attributes:
+      label: 哪裡有問題
+      placeholder: 描述你看到的狀況，以及你覺得應該怎樣
+    validations:
+      required: true

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}AI 復盤訓練{% endblock %}
+
+{% block head %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% macro badge(v) %}
+<span class="badge {{ 'bg-danger' if v > 0 else 'bg-success' if v < 0 else 'bg-secondary' }}">{{ '多' if v > 0 else '空' if v < 0 else '中性' }}</span>
+{% endmacro %}
+
+{% block content %}
+{% if not report %}
+<div class="card p-5 text-center text-muted">尚未訓練，請先執行 <code>python -m trend.train</code></div>
+{% else %}
+{% set p, e, f = report.practice, report.exam, report.exam.final %}
+<h1 class="h4 mb-1">AI 復盤訓練</h1>
+<p class="text-muted small">
+    AI 用 Minervini、O'Neil、Livermore、Burns 的規則，隨機抽歷史時點判斷未來 {{ 20 }} 個交易日漲跌，
+    判斷完立刻對答案、記住這一題，每 {{ 25 }} 輪用所有記憶重新學一次。
+    練習題來自 {{ p.start[:4] }}–{{ p.end[:4] }}，考卷是 AI 從沒看過的 {{ e.start }} ~ {{ e.end }}。
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">復盤練習</div>
+        <div class="stat-value">{{ '{:,}'.format(p.rounds * p.batch) }} 題</div>
+        <div class="stat-label">{{ p.rounds }} 輪 × {{ p.batch }} 題</div>
+    </div></div>
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">考試準確率</div>
+        <div class="stat-value {{ 'up' if f.accuracy > f.always_up else 'down' }}">{{ '%.1f%%' % (f.accuracy * 100) }}</div>
+        <div class="stat-label">全猜漲 {{ '%.1f%%' % (f.always_up * 100) }}・多數決 {{ '%.1f%%' % (f.vote_accuracy * 100) }}</div>
+    </div></div>
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">漲跌都算的平衡準確率</div>
+        <div class="stat-value">{{ '%.1f%%' % (f.balanced_accuracy * 100) }}</div>
+        <div class="stat-label">亂猜 50.0%</div>
+    </div></div>
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">AUC</div>
+        <div class="stat-value">{{ '%.3f' % f.auc }}</div>
+        <div class="stat-label">最佳 {{ '%.3f' % e.best.auc }}（第 {{ e.best.round }} 輪）</div>
+    </div></div>
+</div>
+
+<div class="card p-3 mb-4">
+    <h2 class="h6">越練越準嗎？</h2>
+    <div id="curve"></div>
+    <div class="small mt-2">
+        {% if f.accuracy > f.always_up %}
+        AI 考試成績已經超過「全部猜漲」，交易員規則對方向判斷有幫助。
+        {% else %}
+        <strong>目前還沒有贏過「全部猜漲」。</strong>練習題的命中率會隨練習上升，但考卷成績沒有跟著穩定進步，
+        代表 AI 從過去學到的規則，在考試期間不一定適用。這幾位交易員的方法較擅長挑出強勢股（見「策略回測」），而不是預測 20 日漲跌方向。
+        {% endif %}
+    </div>
+</div>
+
+<div class="card p-3">
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <h2 class="h6 mb-0">AI 今日判斷（{{ report.date }}）</h2>
+        <span class="stat-label">用全部歷史復盤後的判斷</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle small mb-0">
+            <thead>
+            <tr><th>股票</th><th class="text-end">上漲機率</th><th class="text-center">AI</th>
+                {% for t in traders %}<th class="text-center">{{ t.split(' ')[-1] }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+            {% for s in report.today %}
+            <tr>
+                <td class="text-nowrap"><span class="text-muted me-1">{{ s.code }}</span>{{ s.name }}</td>
+                <td class="text-end fw-semibold {{ 'up' if s.prob_up >= 0.5 else 'down' }}">{{ '%.1f%%' % (s.prob_up * 100) }}</td>
+                <td class="text-center fw-semibold {{ 'up' if s.prob_up >= 0.5 else 'down' }}">{{ '漲' if s.prob_up >= 0.5 else '跌' }}</td>
+                {% for t in traders %}<td class="text-center">{{ badge(s[t]) }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="stat-label mt-2">僅為機器學習練習，不構成投資建議。</div>
+</div>
+
+<script>
+    const practice = {{ p.curve | tojson }};
+    const exam = {{ e.curve | tojson }};
+    const base = {{ f.always_up | tojson }};
+    Plotly.newPlot('curve', [
+        {x: practice.map(c => c.round), y: practice.map(c => c.accuracy * 100), name: '練習題命中率', mode: 'lines',
+         line: {color: '#adb5bd'}},
+        {x: exam.map(c => c.round), y: exam.map(c => c.accuracy * 100), name: '考試準確率', mode: 'lines+markers',
+         line: {color: '#4c6ef5', width: 2}},
+    ], {
+        height: 300, margin: {l: 45, r: 10, t: 10, b: 40}, template: 'plotly_white',
+        xaxis: {title: '復盤輪數'}, yaxis: {title: '%', ticksuffix: '%'}, legend: {orientation: 'h', y: -0.25},
+        shapes: [{type: 'line', xref: 'paper', x0: 0, x1: 1, y0: base * 100, y1: base * 100,
+                  line: {dash: 'dot', color: '#e03131'}}],
+        annotations: [{xref: 'paper', x: 1, y: base * 100, text: '全猜漲', showarrow: false, yshift: 10,
+                       xanchor: 'right', font: {color: '#e03131', size: 11}}],
+    }, {displayModeBar: false, responsive: true});
+</script>
+{% endif %}
+{% endblock %}

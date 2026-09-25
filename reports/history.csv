@@ -1,0 +1,4 @@
+run_at,data_end,best_model,auc,accuracy,baseline,auc_technical_only,replaced,auc_logistic,auc_random_forest,auc_gradient_boosting
+2026-09-25 13:29,2026-09-24,random_forest,0.5503,0.5657,0.5714,0.5256,True,0.5344,0.5503,0.5465
+2026-09-25 13:49,2026-09-24,gradient_boosting,0.5535,0.5626,0.5714,0.5219,True,0.5428,0.5531,0.5535
+2026-09-25 14:01,2026-09-24,gradient_boosting,0.5535,0.5626,0.5714,0.5219,True,0.5428,0.5531,0.5535

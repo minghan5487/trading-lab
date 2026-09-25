@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ symbol }} 明日預測{% endblock %}
+
+{% block head %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% block content %}
+{% set trend = 'up' if change > 0 else 'down' if change < 0 else '' %}
+
+<div class="card p-4 mb-4 text-center">
+    <div class="text-muted">{{ symbol }}</div>
+    <div class="stat-label mt-3">明日預測收盤價</div>
+    <div class="{{ trend }}" style="font-size: 3.4rem; font-weight: 700; line-height: 1.1">
+        {{ '{:,.2f}'.format(predicted) }}
+    </div>
+    <div class="fs-5 fw-semibold {{ trend }}">
+        <i class="bi bi-caret-{{ 'up' if change > 0 else 'down' }}-fill"></i>
+        {{ '{:+,.2f}'.format(change) }}（{{ '{:+.2f}'.format(change_pct) }}%）
+    </div>
+    <div class="text-muted mt-3">{{ last_date }} 收盤 {{ '{:,.2f}'.format(last_close) }}</div>
+</div>
+
+<div class="card p-3 mb-3">
+    <div id="chart"></div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <span class="stat-label">
+        模型近期表現：方向準確率 {{ '%.1f%%' % (metrics.direction_acc * 100) }}，
+        平均誤差約 {{ '{:,.0f}'.format(metrics.mae) }} 元（回測 {{ metrics.n_test }} 天）・僅供參考，非投資建議
+    </span>
+    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-repeat me-1"></i>查其他股票</a>
+</div>
+
+<script>
+    const dates = {{ dates | tojson }};
+    const prices = {{ prices | tojson }};
+    const last = dates[dates.length - 1];
+    const color = {{ change | tojson }} >= 0 ? '#e03131' : '#2f9e44';
+
+    Plotly.newPlot('chart', [
+        {x: dates, y: prices, name: '收盤價', mode: 'lines', line: {color: '#4c6ef5', width: 2}},
+        {x: [last, '明日'], y: [prices[prices.length - 1], {{ predicted | tojson }}], name: '預測',
+         mode: 'lines+markers', line: {color: color, dash: 'dot', width: 2}, marker: {size: [0, 10]}},
+    ], {
+        height: 320, margin: {l: 50, r: 20, t: 20, b: 40}, template: 'plotly_white', showlegend: false,
+        xaxis: {type: 'category', nticks: 8}, yaxis: {tickformat: ',.0f'},
+    }, {displayModeBar: false, responsive: true});
+</script>
+{% endblock %}

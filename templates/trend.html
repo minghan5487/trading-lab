@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+    .prob-bar { height: 6px; border-radius: 3px; background: #e9ecef; overflow: hidden; }
+    .prob-bar > div { height: 100%; }
+    .signal { font-size: .75rem; min-width: 2.6rem; }
+    .imp-bar { height: 8px; border-radius: 4px; background: #4c6ef5; }
+    th { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% macro signal_badge(signal, reason) %}
+{% set cls = {'多': 'bg-danger', '空': 'bg-success', '中性': 'bg-secondary'}.get(signal, 'bg-light text-muted') %}
+<span class="badge signal {{ cls }}" data-bs-toggle="tooltip" title="{{ reason }}">{{ signal }}</span>
+{% endmacro %}
+
+{% block content %}
+{% if not meta %}
+<div class="card p-5 text-center text-muted">
+    尚未訓練模型，請先執行 <code>python -m trend.train</code>
+</div>
+{% else %}
+<div class="d-flex flex-wrap justify-content-between align-items-end mb-3 gap-2">
+    <div>
+        <h1 class="h4 mb-1">0050 成分股 未來 {{ meta.horizon }} 日走勢預測</h1>
+        <div class="text-muted small">資料日期 {{ data_date }}・模型 {{ meta.model }}・訓練於 {{ meta.trained_at }}・樣本 {{ '{:,}'.format(meta.samples) }} 筆</div>
+    </div>
+    <span class="badge bg-light text-dark border"><i class="bi bi-github me-1"></i>GitHub Actions 每個交易日自動重新訓練</span>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">Walk-forward AUC</div>
+        <div class="stat-value">{{ '%.3f' % meta.auc }}</div>
+        <div class="stat-label">隨機猜測為 0.500</div>
+    </div></div>
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">專家因子的貢獻</div>
+        <div class="stat-value">+{{ '%.3f' % (meta.auc - meta.auc_technical_only) }}</div>
+        <div class="stat-label">僅技術指標 AUC {{ '%.3f' % meta.auc_technical_only }}</div>
+    </div></div>
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">模型前 20% 平均報酬</div>
+        <div class="stat-value up">{{ '%+.2f%%' % (meta.top_quintile_return * 100) }}</div>
+        <div class="stat-label">全體平均 {{ '%+.2f%%' % (meta.avg_return * 100) }}</div>
+    </div></div>
+    <div class="col-6 col-lg-3"><div class="card p-3 h-100">
+        <div class="stat-label">準確率</div>
+        <div class="stat-value">{{ '%.1f%%' % (meta.accuracy * 100) }}</div>
+        <div class="stat-label">全猜上漲 {{ '%.1f%%' % (meta.baseline * 100) }}</div>
+    </div></div>
+</div>
+
+<div class="row g-3 mb-4">
+    {% for expert, style in experts.items() %}
+    {% set c = consensus[expert] %}
+    <div class="col-6 col-md-4 col-xl">
+        <div class="card p-3 h-100">
+            <div class="fw-semibold">{{ expert }}</div>
+            <div class="stat-label mb-2">{{ style }}</div>
+            <div class="d-flex gap-2 small">
+                <span class="up">多 {{ c.get('多', 0) }}</span>
+                <span class="text-muted">中性 {{ c.get('中性', 0) }}</span>
+                <span class="down">空 {{ c.get('空', 0) }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h6 mb-0">個股預測</h2>
+                <input type="search" class="form-control form-control-sm w-auto" placeholder="搜尋代碼或名稱" id="filter">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small" id="stocks">
+                    <thead>
+                    <tr>
+                        <th>股票</th><th class="text-end">收盤</th><th class="text-end">近 20 日</th>
+                        <th style="min-width: 140px">上漲機率</th>
+                        {% for expert in experts %}<th class="text-center">{{ expert.split(' ')[-1] }}</th>{% endfor %}
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for s in stocks %}
+                    <tr>
+                        <td class="text-nowrap"><span class="text-muted me-1">{{ s.code }}</span>{{ s.name }}</td>
+                        <td class="text-end">{{ '{:,.2f}'.format(s.close) }}</td>
+                        <td class="text-end {{ 'up' if s.ret_20 > 0 else 'down' }}">{{ '%+.1f%%' % (s.ret_20 * 100) }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-semibold" style="width: 3.2rem">{{ '%.1f%%' % (s.prob_up * 100) }}</span>
+                                <div class="prob-bar flex-grow-1">
+                                    <div style="width: {{ s.prob_up * 100 }}%; background: {{ '#e03131' if s.prob_up >= 0.5 else '#2f9e44' }}"></div>
+                                </div>
+                            </div>
+                        </td>
+                        {% for expert, signal, reason in s.views %}
+                        <td class="text-center">{{ signal_badge(signal, reason) }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="stat-label mt-2">滑鼠移到專家標籤上可看判斷原因。專家觀點是依其公開方法論量化的規則，並非本人意見。</div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card p-3 mb-4">
+            <h2 class="h6">最重要的特徵</h2>
+            <div class="stat-label mb-3">Permutation importance（打亂該特徵後 AUC 下降幅度）</div>
+            {% set max_imp = importance[0].importance %}
+            {% for f in importance %}
+            <div class="mb-2">
+                <div class="d-flex justify-content-between small"><span>{{ f.label }}</span><span class="text-muted">{{ '%.4f' % f.importance }}</span></div>
+                <div class="imp-bar" style="width: {{ [f.importance / max_imp * 100, 1] | max }}%"></div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card p-3 mb-4">
+            <h2 class="h6 mb-3">各年度驗證結果</h2>
+            <table class="table table-sm small mb-0">
+                <thead><tr><th>測試期間</th><th class="text-end">AUC</th><th class="text-end">前 20%</th><th class="text-end">平均</th></tr></thead>
+                <tbody>
+                {% for f in folds %}
+                <tr>
+                    <td>{{ f.period[:7] }} 起</td>
+                    <td class="text-end">{{ '%.3f' % f.auc }}</td>
+                    <td class="text-end {{ 'up' if f.top_quintile_return > f.avg_return else '' }}">{{ '%+.1f%%' % (f.top_quintile_return * 100) }}</td>
+                    <td class="text-end">{{ '%+.1f%%' % (f.avg_return * 100) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card p-3">
+            <h2 class="h6">訓練紀錄</h2>
+            <div id="history"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+    document.getElementById('filter').addEventListener('input', e => {
+        const q = e.target.value.trim();
+        document.querySelectorAll('#stocks tbody tr').forEach(tr => {
+            tr.style.display = tr.cells[0].textContent.includes(q) ? '' : 'none';
+        });
+    });
+
+    const history = {{ history | tojson }};
+    Plotly.newPlot('history', [
+        {x: history.map(h => h.run_at), y: history.map(h => h.auc), name: '全部特徵', mode: 'lines+markers'},
+        {x: history.map(h => h.run_at), y: history.map(h => h.auc_technical_only), name: '僅技術指標', mode: 'lines+markers'},
+    ], {
+        height: 240, margin: {l: 40, r: 10, t: 10, b: 40}, template: 'plotly_white',
+        yaxis: {title: 'AUC'}, legend: {orientation: 'h', y: -0.3},
+        shapes: [{type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 0.5, y1: 0.5, line: {dash: 'dot', color: '#adb5bd'}}],
+    }, {displayModeBar: false, responsive: true});
+</script>
+{% endif %}
+{% endblock %}

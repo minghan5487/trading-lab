@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-5 col-md-7">
+        <div class="card p-4">
+            <h1 class="h4 mb-1">隔日收盤價預測</h1>
+            <p class="text-muted small mb-4">以決策樹迴歸預測隔日報酬率，並以時間順序切分驗證</p>
+
+            {% if error %}
+            <div class="alert alert-danger py-2"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+            {% endif %}
+
+            <form action="{{ url_for('predict') }}" method="post" id="form">
+                <div class="mb-3">
+                    <label for="stock_symbol" class="form-label">股票代碼</label>
+                    <input type="text" class="form-control form-control-lg" id="stock_symbol" name="stock_symbol"
+                           placeholder="例如 2330.TW" required autofocus>
+                    <div class="form-text">上市加 .TW、上櫃加 .TWO；美股直接輸入代碼，例如 AAPL</div>
+                </div>
+                <div class="mb-4">
+                    <label for="years" class="form-label">訓練資料年數：<strong id="years_label">3</strong> 年</label>
+                    <input type="range" class="form-range" id="years" name="years" min="1" max="10" value="3"
+                           oninput="years_label.textContent = this.value">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100" id="submit">
+                    <i class="bi bi-play-fill me-1"></i>開始預測
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById('form').addEventListener('submit', () => {
+        const btn = document.getElementById('submit');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>下載資料與訓練中…';
+    });
+</script>
+{% endblock %}

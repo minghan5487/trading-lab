@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}策略回測{% endblock %}
+
+{% block head %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% block content %}
+{% if not report %}
+<div class="card p-5 text-center text-muted">尚未執行回測，請先執行 <code>python -m trend.train</code></div>
+{% else %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-1">交易員策略回測</h1>
+        <div class="text-muted small">照各交易員公開的規則買賣 0050 成分股，已扣手續費 0.1425% 與證交稅 0.3%</div>
+    </div>
+    <div class="btn-group" role="group">
+        <input type="radio" class="btn-check" name="window" id="w-full" value="full" checked>
+        <label class="btn btn-outline-primary btn-sm" for="w-full">完整期間</label>
+        <input type="radio" class="btn-check" name="window" id="w-oos" value="oos">
+        <label class="btn btn-outline-primary btn-sm" for="w-oos">近 5 年（含機器學習）</label>
+    </div>
+</div>
+
+<div class="card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="h6 mb-0">資金成長（投入 1 元）</h2>
+        <span class="stat-label" id="period"></span>
+    </div>
+    <div id="chart"></div>
+</div>
+
+{% for key, window in report.items() %}
+<div class="card p-3 mb-4 window-table" data-window="{{ key }}" {% if key != 'full' %}hidden{% endif %}>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+            <tr><th>策略</th><th class="text-end">總報酬</th><th class="text-end">年化報酬</th>
+                <th class="text-end">最大回檔</th><th class="text-end">夏普值</th><th class="text-end">持股時間</th></tr>
+            </thead>
+            <tbody>
+            {% set bench = window.strategies['50 檔平均持有'].cagr %}
+            {% for name, m in window.strategies.items() | sort(attribute='1.cagr', reverse=true) %}
+            <tr class="{{ 'table-light' if name in ('50 檔平均持有', '加權指數') }}">
+                <td>
+                    <span class="fw-semibold">{{ name }}</span>
+                    {% if name in traders %}<div class="stat-label">{{ traders[name] }}</div>{% endif %}
+                </td>
+                <td class="text-end">{{ '%+.0f%%' % (m.total_return * 100) }}</td>
+                <td class="text-end fw-semibold {{ 'up' if m.cagr > bench and name not in ('50 檔平均持有', '加權指數') }}">
+                    {{ '%+.1f%%' % (m.cagr * 100) }}
+                </td>
+                <td class="text-end down">{{ '%.1f%%' % (m.max_drawdown * 100) }}</td>
+                <td class="text-end">{{ '%.2f' % m.sharpe }}</td>
+                <td class="text-end text-muted">{{ '%.0f%%' % (m.exposure * 100) if m.exposure is defined else '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="stat-label mt-2">紅色＝年化報酬贏過「50 檔平均持有」。夏普值越高代表每承擔一分風險換到的報酬越多。</div>
+</div>
+{% endfor %}
+
+<div class="row g-3 mb-4">
+    {% for name, rule in traders.items() %}
+    <div class="col-md-6 col-xl-3">
+        <div class="card p-3 h-100">
+            <div class="fw-semibold">{{ name }}</div>
+            <div class="stat-label mb-2">目前符合條件（{{ picks[name] | length }} 檔）</div>
+            <div>
+                {% for s in picks[name] %}
+                <span class="badge bg-light text-dark border me-1 mb-1">{{ s.code }} {{ s.name }}</span>
+                {% else %}
+                <span class="text-muted small">目前沒有股票符合</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="alert alert-warning small mb-0">
+    <strong>回測限制：</strong>
+    股票池是「現在」的 0050 成分股，等於事先知道哪些公司會成長為大型股（存活者偏差），所有策略的報酬都會被高估；
+    加權指數為價格指數、未含股息；成交假設以收盤價執行、無滑價。僅為學習用途，不構成投資建議。
+</div>
+
+<script>
+    const curves = {{ curves | tojson }};
+    const periods = {
+        {% for key, w in report.items() %}'{{ key }}': '{{ w.start }} ~ {{ w.end }}',{% endfor %}
+    };
+    const bold = ['50 檔平均持有', '加權指數'];
+
+    function draw(key) {
+        const c = curves[key];
+        const traces = Object.entries(c.series).map(([name, y]) => ({
+            x: c.dates, y, name, mode: 'lines',
+            line: bold.includes(name) ? {width: 2, dash: 'dot', color: name === '加權指數' ? '#868e96' : '#212529'} : {width: 2},
+        }));
+        Plotly.react('chart', traces, {
+            height: 420, margin: {l: 50, r: 10, t: 10, b: 40}, template: 'plotly_white',
+            yaxis: {type: 'log', title: '資金（對數刻度）'}, legend: {orientation: 'h', y: -0.15},
+            hovermode: 'x unified',
+        }, {displayModeBar: false, responsive: true});
+        document.getElementById('period').textContent = periods[key];
+        document.querySelectorAll('.window-table').forEach(el => el.hidden = el.dataset.window !== key);
+    }
+
+    document.querySelectorAll('input[name=window]').forEach(el => el.addEventListener('change', e => draw(e.target.value)));
+    draw('full');
+</script>
+{% endif %}
+{% endblock %}
